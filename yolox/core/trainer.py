@@ -1,6 +1,15 @@
 #!/usr/bin/env python3
 # Copyright (c) Megvii, Inc. and its affiliates.
 
+import torch_xla.distributed.xla_backend
+import torch_xla
+import torch_xla.debug.metrics as met
+import torch_xla.distributed.parallel_loader as pl
+import torch_xla.utils.utils as xu
+import torch_xla.core.xla_model as xm
+import torch_xla.distributed.xla_multiprocessing as xmp
+
+
 import datetime
 import os
 import time
@@ -48,7 +57,8 @@ class Trainer:
         self.is_distributed = get_world_size() > 1
         self.rank = get_rank()
         self.local_rank = get_local_rank()
-        self.device = "cuda:{}".format(self.local_rank)
+        #self.device = "cuda:{}".format(self.local_rank)
+        self.device = device = xm.xla_device()
         self.use_model_ema = exp.ema
         self.save_history_ckpt = exp.save_history_ckpt
 
@@ -95,8 +105,9 @@ class Trainer:
 
     def train_one_iter(self):
         iter_start_time = time.time()
-
-        inps, targets = self.prefetcher.next()
+        batch =  next(iter(self.prefetcher))
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX {batch}")
+        inps, targets = batch
         inps = inps.to(self.data_type)
         targets = targets.to(self.data_type)
         targets.requires_grad = False
@@ -133,7 +144,7 @@ class Trainer:
         logger.info("exp value:\n{}".format(self.exp))
 
         # model related init
-        torch.cuda.set_device(self.local_rank)
+        #torch.cuda.set_device(self.local_rank)
         model = self.exp.get_model()
         logger.info(
             "Model Summary: {}".format(get_model_info(model, self.exp.test_size))
@@ -155,7 +166,10 @@ class Trainer:
             cache_img=self.args.cache,
         )
         logger.info("init prefetcher, this might take one minute or less...")
-        self.prefetcher = DataPrefetcher(self.train_loader)
+        
+        #self.prefetcher = DataPrefetcher(self.train_loader)
+        self.prefetcher = self.train_loader
+
         # max_iter means iters per epoch
         self.max_iter = len(self.train_loader)
 
