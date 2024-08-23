@@ -1,0 +1,142 @@
+2024-08-23 13:09:44.753 | INFO     | yolox.core.trainer:before_train:132 - args: Namespace(experiment_name='yolox_s', name='yolox-s', dist_backend='nccl', dist_url=None, batch_size=2, devices=1, exp_file=None, resume=False, ckpt=None, start_epoch=None, num_machines=1, machine_rank=0, fp16=True, cache=None, occupy=True, logger='tensorboard', opts=[])
+2024-08-23 13:09:44.754 | INFO     | yolox.core.trainer:before_train:133 - exp value:
+╒═══════════════════╤════════════════════════════╕
+│ keys              │ values                     │
+╞═══════════════════╪════════════════════════════╡
+│ seed              │ None                       │
+├───────────────────┼────────────────────────────┤
+│ output_dir        │ './YOLOX_outputs'          │
+├───────────────────┼────────────────────────────┤
+│ print_interval    │ 10                         │
+├───────────────────┼────────────────────────────┤
+│ eval_interval     │ 10                         │
+├───────────────────┼────────────────────────────┤
+│ dataset           │ None                       │
+├───────────────────┼────────────────────────────┤
+│ num_classes       │ 80                         │
+├───────────────────┼────────────────────────────┤
+│ depth             │ 0.33                       │
+├───────────────────┼────────────────────────────┤
+│ width             │ 0.5                        │
+├───────────────────┼────────────────────────────┤
+│ act               │ 'silu'                     │
+├───────────────────┼────────────────────────────┤
+│ data_num_workers  │ 4                          │
+├───────────────────┼────────────────────────────┤
+│ input_size        │ (640, 640)                 │
+├───────────────────┼────────────────────────────┤
+│ multiscale_range  │ 5                          │
+├───────────────────┼────────────────────────────┤
+│ data_dir          │ None                       │
+├───────────────────┼────────────────────────────┤
+│ train_ann         │ 'instances_train2017.json' │
+├───────────────────┼────────────────────────────┤
+│ val_ann           │ 'instances_val2017.json'   │
+├───────────────────┼────────────────────────────┤
+│ test_ann          │ 'instances_test2017.json'  │
+├───────────────────┼────────────────────────────┤
+│ mosaic_prob       │ 1.0                        │
+├───────────────────┼────────────────────────────┤
+│ mixup_prob        │ 1.0                        │
+├───────────────────┼────────────────────────────┤
+│ hsv_prob          │ 1.0                        │
+├───────────────────┼────────────────────────────┤
+│ flip_prob         │ 0.5                        │
+├───────────────────┼────────────────────────────┤
+│ degrees           │ 10.0                       │
+├───────────────────┼────────────────────────────┤
+│ translate         │ 0.1                        │
+├───────────────────┼────────────────────────────┤
+│ mosaic_scale      │ (0.1, 2)                   │
+├───────────────────┼────────────────────────────┤
+│ enable_mixup      │ True                       │
+├───────────────────┼────────────────────────────┤
+│ mixup_scale       │ (0.5, 1.5)                 │
+├───────────────────┼────────────────────────────┤
+│ shear             │ 2.0                        │
+├───────────────────┼────────────────────────────┤
+│ warmup_epochs     │ 5                          │
+├───────────────────┼────────────────────────────┤
+│ max_epoch         │ 300                        │
+├───────────────────┼────────────────────────────┤
+│ warmup_lr         │ 0                          │
+├───────────────────┼────────────────────────────┤
+│ min_lr_ratio      │ 0.05                       │
+├───────────────────┼────────────────────────────┤
+│ basic_lr_per_img  │ 0.00015625                 │
+├───────────────────┼────────────────────────────┤
+│ scheduler         │ 'yoloxwarmcos'             │
+├───────────────────┼────────────────────────────┤
+│ no_aug_epochs     │ 15                         │
+├───────────────────┼────────────────────────────┤
+│ ema               │ True                       │
+├───────────────────┼────────────────────────────┤
+│ weight_decay      │ 0.0005                     │
+├───────────────────┼────────────────────────────┤
+│ momentum          │ 0.9                        │
+├───────────────────┼────────────────────────────┤
+│ save_history_ckpt │ True                       │
+├───────────────────┼────────────────────────────┤
+│ exp_name          │ 'yolox_s'                  │
+├───────────────────┼────────────────────────────┤
+│ test_size         │ (640, 640)                 │
+├───────────────────┼────────────────────────────┤
+│ test_conf         │ 0.01                       │
+├───────────────────┼────────────────────────────┤
+│ nmsthre           │ 0.65                       │
+╘═══════════════════╧════════════════════════════╛
+2024-08-23 13:09:45.423 | ERROR    | yolox.core.launch:launch:98 - An error has been caught in function 'launch', process 'MainProcess' (78972), thread 'MainThread' (139873312629376):
+Traceback (most recent call last):
+
+  File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+           │         │     └ {'__name__': '__main__', '__doc__': None, '__package__': 'yolox.tools', '__loader__': <_frozen_importlib_external.SourceFileL...
+           │         └ <code object <module> at 0x7f36cabe40e0, file "/home/ubuntu/YOLOX/tools/train.py", line 1>
+           └ <function _run_code at 0x7f36cab292d0>
+  File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+         │     └ {'__name__': '__main__', '__doc__': None, '__package__': 'yolox.tools', '__loader__': <_frozen_importlib_external.SourceFileL...
+         └ <code object <module> at 0x7f36cabe40e0, file "/home/ubuntu/YOLOX/tools/train.py", line 1>
+
+  File "/home/ubuntu/YOLOX/tools/train.py", line 138, in <module>
+    launch(
+    └ <function launch at 0x7f357e73d000>
+
+> File "/home/ubuntu/YOLOX/yolox/core/launch.py", line 98, in launch
+    main_func(*args)
+    │          └ (╒═══════════════════╤════════════════════════════╕
+    │            │ keys              │ values                     │
+    │            ╞═══════════════════╪═...
+    └ <function main at 0x7f35705be830>
+
+  File "/home/ubuntu/YOLOX/tools/train.py", line 118, in main
+    trainer.train()
+    │       └ <function Trainer.train at 0x7f356f6a25f0>
+    └ <yolox.core.trainer.Trainer object at 0x7f356f6a6e60>
+
+  File "/home/ubuntu/YOLOX/yolox/core/trainer.py", line 75, in train
+    self.before_train()
+    │    └ <function Trainer.before_train at 0x7f356f6a2830>
+    └ <yolox.core.trainer.Trainer object at 0x7f356f6a6e60>
+
+  File "/home/ubuntu/YOLOX/yolox/core/trainer.py", line 136, in before_train
+    torch.cuda.set_device(self.local_rank)
+    │     │    │          │    └ 0
+    │     │    │          └ <yolox.core.trainer.Trainer object at 0x7f356f6a6e60>
+    │     │    └ <function set_device at 0x7f362855fac0>
+    │     └ <module 'torch.cuda' from '/opt/aws_neuronx_venv_pytorch_2_1/lib/python3.10/site-packages/torch/cuda/__init__.py'>
+    └ <module 'torch' from '/opt/aws_neuronx_venv_pytorch_2_1/lib/python3.10/site-packages/torch/__init__.py'>
+
+  File "/opt/aws_neuronx_venv_pytorch_2_1/lib/python3.10/site-packages/torch/cuda/__init__.py", line 404, in set_device
+    torch._C._cuda_setDevice(device)
+    │     │  │               └ 0
+    │     │  └ <built-in function _cuda_setDevice>
+    │     └ <module 'torch._C' from '/opt/aws_neuronx_venv_pytorch_2_1/lib/python3.10/site-packages/torch/_C.cpython-310-x86_64-linux-gnu...
+    └ <module 'torch' from '/opt/aws_neuronx_venv_pytorch_2_1/lib/python3.10/site-packages/torch/__init__.py'>
+  File "/opt/aws_neuronx_venv_pytorch_2_1/lib/python3.10/site-packages/torch/cuda/__init__.py", line 298, in _lazy_init
+    torch._C._cuda_init()
+    │     │  └ <built-in function _cuda_init>
+    │     └ <module 'torch._C' from '/opt/aws_neuronx_venv_pytorch_2_1/lib/python3.10/site-packages/torch/_C.cpython-310-x86_64-linux-gnu...
+    └ <module 'torch' from '/opt/aws_neuronx_venv_pytorch_2_1/lib/python3.10/site-packages/torch/__init__.py'>
+
+RuntimeError: Found no NVIDIA driver on your system. Please check that you have an NVIDIA GPU and installed a driver from http://www.nvidia.com/Download/index.aspx
