@@ -216,11 +216,33 @@ class YOLOXHead(nn.Module):
         grid = self.grids[k]
 
         batch_size = output.shape[0]
+
+        ################################
+        ######## EDIT ##################
+        ################################
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX Grid Size = {grid.shape}")
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX Batch Size = {batch_size}")
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX output_size = {output.shape}")
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX DType is = {dtype}")
+        
+        
+
+        ################################
+
         n_ch = 5 + self.num_classes
         hsize, wsize = output.shape[-2:]
         if grid.shape[2:4] != output.shape[2:4]:
             yv, xv = meshgrid([torch.arange(hsize), torch.arange(wsize)])
-            grid = torch.stack((xv, yv), 2).view(1, 1, hsize, wsize, 2).type(dtype)
+
+            print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX Shape after stack is = {torch.stack((xv, yv), 2).shape}")
+            print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX Shape after stack is = {torch.stack((xv, yv), 2).view(1, 1, hsize, wsize, 2).dtype}")
+
+            #grid = torch.stack((xv, yv), 2).view(1, 1, hsize, wsize, 2).type(dtype)
+            #grid = torch.stack((xv, yv), 2).view(1, 1, hsize, wsize, 2, dtype=dtype) #Option 1
+            grid = torch.stack((xv, yv), 2).view((1, 1, hsize, wsize, 2), dtype)
+            #grid = grid.to(device)
+
+            
             self.grids[k] = grid
 
         output = output.view(batch_size, 1, n_ch, hsize, wsize)

@@ -96,20 +96,25 @@ class Trainer:
             self.before_epoch()
             self.train_in_iter()
             self.after_epoch()
+        #xm.mark_step()
 
     def train_in_iter(self):
         for self.iter in range(self.max_iter):
             self.before_iter()
             self.train_one_iter()
             self.after_iter()
+            xm.mark_step()
 
     def train_one_iter(self):
         iter_start_time = time.time()
         batch =  next(iter(self.prefetcher))
         print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX {batch}")
-        inps, targets = batch
+        print(f"111111111111111111111111111XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX {len(batch)}")
+        inps, targets, _, _ = batch
         inps = inps.to(self.data_type)
         targets = targets.to(self.data_type)
+        inps = inps.to(self.device)
+        targets = targets.to(self.device)
         targets.requires_grad = False
         inps, targets = self.exp.preprocess(inps, targets, self.input_size)
         data_end_time = time.time()
