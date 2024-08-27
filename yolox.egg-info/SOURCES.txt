@@ -18,6 +18,7 @@ tools/eval.py
 tools/export_onnx.py
 tools/export_torchscript.py
 tools/train.py
+tools/train_neuron.py
 tools/trt.py
 tools/visualize_assign.py
 yolox/__init__.py

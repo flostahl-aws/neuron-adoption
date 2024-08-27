@@ -1,5 +1,9 @@
-#!/usr/bin/env python3
-# Copyright (c) Megvii, Inc. and its affiliates.
+import torch_xla
+import torch_xla.debug.metrics as met
+import torch_xla.distributed.parallel_loader as pl
+import torch_xla.utils.utils as xu
+import torch_xla.core.xla_model as xm
+import torch_xla.distributed.xla_multiprocessing as xmp
 
 import datetime
 import os
@@ -33,26 +37,23 @@ from yolox.utils import (
     synchronize
 )
 
-
 class Trainer:
     def __init__(self, exp: Exp, args):
-        # init function only defines some basic attr, other attrs like model, optimizer are built in
-        # before_train methods.
         self.exp = exp
         self.args = args
 
-        # training related attr
+        # training related attributes
         self.max_epoch = exp.max_epoch
         self.amp_training = args.fp16
         self.scaler = torch.cuda.amp.GradScaler(enabled=args.fp16)
         self.is_distributed = get_world_size() > 1
         self.rank = get_rank()
         self.local_rank = get_local_rank()
-        self.device = "cuda:{}".format(self.local_rank)
+        self.device = xm.xla_device()  # Set device to TPU
         self.use_model_ema = exp.ema
         self.save_history_ckpt = exp.save_history_ckpt
 
-        # data/dataloader related attr
+        # data/dataloader related attributes
         self.data_type = torch.float16 if args.fp16 else torch.float32
         self.input_size = exp.input_size
         self.best_ap = 0
@@ -76,7 +77,7 @@ class Trainer:
         try:
             self.train_in_epoch()
         except Exception as e:
-            logger.error("Exception in training: ", e)
+            logger.error(f"Exception in training: {e}")
             raise
         finally:
             self.after_train()
@@ -86,19 +87,26 @@ class Trainer:
             self.before_epoch()
             self.train_in_iter()
             self.after_epoch()
+        xm.mark_step()
 
     def train_in_iter(self):
         for self.iter in range(self.max_iter):
             self.before_iter()
             self.train_one_iter()
             self.after_iter()
+            xm.mark_step()  # Ensure TPU operations are synchronized
 
     def train_one_iter(self):
+        print("TTTTTTTTT STARTING TRAIN_ONE_ITER\n")
         iter_start_time = time.time()
-
-        inps, targets = self.prefetcher.next()
+        batch = next(iter(self.prefetcher))
+        inps, targets, _, _ = batch
+        print(f"TTTTTTTTTTTT inps = {inps} , inps.size() = {inps.size()}")
+        print(f"TTTTTTTTTTTT targets = {targets} , targets.size() = {targets.size()}\n")
         inps = inps.to(self.data_type)
         targets = targets.to(self.data_type)
+        inps = inps.to(self.device)
+        targets = targets.to(self.device)
         targets.requires_grad = False
         inps, targets = self.exp.preprocess(inps, targets, self.input_size)
         data_end_time = time.time()
@@ -129,24 +137,21 @@ class Trainer:
         )
 
     def before_train(self):
-        logger.info("args: {}".format(self.args))
-        logger.info("exp value:\n{}".format(self.exp))
+        logger.info(f"args: {self.args}")
+        logger.info(f"exp value:\n{self.exp}")
 
-        # model related init
-        torch.cuda.set_device(self.local_rank)
+        # model related initialization
         model = self.exp.get_model()
-        logger.info(
-            "Model Summary: {}".format(get_model_info(model, self.exp.test_size))
-        )
+        logger.info(f"Model Summary: {get_model_info(model, self.exp.test_size)}")
         model.to(self.device)
 
-        # solver related init
+        # solver related initialization
         self.optimizer = self.exp.get_optimizer(self.args.batch_size)
 
-        # value of epoch will be set in `resume_train`
+        # resume training if applicable
         model = self.resume_train(model)
 
-        # data related init
+        # data related initialization
         self.no_aug = self.start_epoch >= self.max_epoch - self.exp.no_aug_epochs
         self.train_loader = self.exp.get_data_loader(
             batch_size=self.args.batch_size,
@@ -155,10 +160,9 @@ class Trainer:
             cache_img=self.args.cache,
         )
         logger.info("init prefetcher, this might take one minute or less...")
-        self.prefetcher = DataPrefetcher(self.train_loader)
-        # max_iter means iters per epoch
-        self.max_iter = len(self.train_loader)
+        self.prefetcher = pl.MpDeviceLoader(self.train_loader, self.device)  # DataLoader for XLA
 
+        self.max_iter = len(self.train_loader)
         self.lr_scheduler = self.exp.get_lr_scheduler(
             self.exp.basic_lr_per_img * self.args.batch_size, self.max_iter
         )
@@ -173,11 +177,10 @@ class Trainer:
             self.ema_model.updates = self.max_iter * self.start_epoch
 
         self.model = model
-
         self.evaluator = self.exp.get_evaluator(
             batch_size=self.args.batch_size, is_distributed=self.is_distributed
         )
-        # Tensorboard and Wandb loggers
+
         if self.rank == 0:
             if self.args.logger == "tensorboard":
                 self.tblogger = SummaryWriter(os.path.join(self.file_name, "tensorboard"))
@@ -194,11 +197,11 @@ class Trainer:
                 raise ValueError("logger must be either 'tensorboard', 'mlflow' or 'wandb'")
 
         logger.info("Training start...")
-        logger.info("\n{}".format(model))
+        logger.info(f"\n{model}")
 
     def after_train(self):
         logger.info(
-            "Training of experiment is done and the best AP is {:.2f}".format(self.best_ap * 100)
+            f"Training of experiment is done and the best AP is {self.best_ap * 100:.2f}"
         )
         if self.rank == 0:
             if self.args.logger == "wandb":
@@ -215,7 +218,7 @@ class Trainer:
                                                 metadata=metadata)
 
     def before_epoch(self):
-        logger.info("---> start train epoch{}".format(self.epoch + 1))
+        logger.info(f"---> start train epoch {self.epoch + 1}")
 
         if self.epoch + 1 == self.max_epoch - self.exp.no_aug_epochs or self.no_aug:
             logger.info("--->No mosaic aug now!")
@@ -240,42 +243,27 @@ class Trainer:
         pass
 
     def after_iter(self):
-        """
-        `after_iter` contains two parts of logic:
-            * log information
-            * reset setting of resize
-        """
-        # log needed information
         if (self.iter + 1) % self.exp.print_interval == 0:
-            # TODO check ETA logic
             left_iters = self.max_iter * self.max_epoch - (self.progress_in_iter + 1)
             eta_seconds = self.meter["iter_time"].global_avg * left_iters
-            eta_str = "ETA: {}".format(datetime.timedelta(seconds=int(eta_seconds)))
+            eta_str = f"ETA: {datetime.timedelta(seconds=int(eta_seconds))}"
 
-            progress_str = "epoch: {}/{}, iter: {}/{}".format(
-                self.epoch + 1, self.max_epoch, self.iter + 1, self.max_iter
-            )
+            progress_str = f"epoch: {self.epoch + 1}/{self.max_epoch}, iter: {self.iter + 1}/{self.max_iter}"
             loss_meter = self.meter.get_filtered_meter("loss")
             loss_str = ", ".join(
-                ["{}: {:.1f}".format(k, v.latest) for k, v in loss_meter.items()]
+                [f"{k}: {v.latest:.1f}" for k, v in loss_meter.items()]
             )
 
             time_meter = self.meter.get_filtered_meter("time")
             time_str = ", ".join(
-                ["{}: {:.3f}s".format(k, v.avg) for k, v in time_meter.items()]
+                [f"{k}: {v.avg:.3f}s" for k, v in time_meter.items()]
             )
 
-            mem_str = "gpu mem: {:.0f}Mb, mem: {:.1f}Gb".format(gpu_mem_usage(), mem_usage())
+            mem_str = f"gpu mem: {gpu_mem_usage():.0f}Mb, mem: {mem_usage():.1f}Gb"
 
             logger.info(
-                "{}, {}, {}, {}, lr: {:.3e}".format(
-                    progress_str,
-                    mem_str,
-                    time_str,
-                    loss_str,
-                    self.meter["lr"].latest,
-                )
-                + (", size: {:d}, {}".format(self.input_size[0], eta_str))
+                f"{progress_str}, {mem_str}, {time_str}, {loss_str}, lr: {self.meter['lr'].latest:.3e}"
+                + (f", size: {self.input_size[0]}, {eta_str}")
             )
 
             if self.rank == 0:
@@ -294,11 +282,10 @@ class Trainer:
                 if self.args.logger == 'mlflow':
                     logs = {"train/" + k: v.latest for k, v in loss_meter.items()}
                     logs.update({"train/lr": self.meter["lr"].latest})
-                    self.mlflow_logger.on_log(self.args, self.exp, self.epoch+1, logs)
+                    self.mlflow_logger.on_log(self.args, self.exp, self.epoch + 1, logs)
 
             self.meter.clear_meters()
 
-        # random resizing
         if (self.progress_in_iter + 1) % 10 == 0:
             self.input_size = self.exp.random_resize(
                 self.train_loader, self.epoch, self.rank, self.is_distributed
@@ -317,11 +304,9 @@ class Trainer:
                 ckpt_file = self.args.ckpt
 
             ckpt = torch.load(ckpt_file, map_location=self.device)
-            # resume the model/optimizer state dict
             model.load_state_dict(ckpt["model"])
             self.optimizer.load_state_dict(ckpt["optimizer"])
             self.best_ap = ckpt.pop("best_ap", 0)
-            # resume the training states variables
             start_epoch = (
                 self.args.start_epoch - 1
                 if self.args.start_epoch is not None
@@ -329,10 +314,8 @@ class Trainer:
             )
             self.start_epoch = start_epoch
             logger.info(
-                "loaded checkpoint '{}' (epoch {})".format(
-                    self.args.resume, self.start_epoch
-                )
-            )  # noqa
+                f"loaded checkpoint '{self.args.resume}' (epoch {self.start_epoch})"
+            )
         else:
             if self.args.ckpt is not None:
                 logger.info("loading checkpoint for fine tuning")
@@ -377,8 +360,8 @@ class Trainer:
                     "val/best_ap": round(self.best_ap, 3),
                     "train/epoch": self.epoch + 1,
                 }
-                self.mlflow_logger.on_log(self.args, self.exp, self.epoch+1, logs)
-            logger.info("\n" + summary)
+                self.mlflow_logger.on_log(self.args, self.exp, self.epoch + 1, logs)
+            logger.info(f"\n{summary}")
         synchronize()
 
         self.save_ckpt("last_epoch", update_best_ckpt, ap=ap50_95)
@@ -399,7 +382,7 @@ class Trainer:
     def save_ckpt(self, ckpt_name, update_best_ckpt=False, ap=None):
         if self.rank == 0:
             save_model = self.ema_model.ema if self.use_model_ema else self.model
-            logger.info("Save weights to {}".format(self.file_name))
+            logger.info(f"Save weights to {self.file_name}")
             ckpt_state = {
                 "start_epoch": self.epoch + 1,
                 "model": save_model.state_dict(),
