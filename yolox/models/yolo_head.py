@@ -261,7 +261,45 @@ class YOLOXHead(nn.Module):
         obj_preds = outputs[:, :, 4:5]  # [batch, n_anchors_all, 1]
         cls_preds = outputs[:, :, 5:]  # [batch, n_anchors_all, n_cls]
 
-        nlabel = (labels.sum(dim=2) > 0).sum(dim=1)  # number of objects
+
+        
+        #nlabel = (labels.sum(dim=2) > 0).sum(dim=1)  # number of objects
+        labels_cpu = labels.to('cpu')
+        nlabel = (labels_cpu.sum(dim=2) > 0)
+
+
+        ############
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX line 269 labels = {nlabel}")
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX line 269 labels = {nlabel.shape}")
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX line 269 labels = {nlabel.type()}")
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX line 269 labels = {nlabel.dtype}")
+        # print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX line 269 labels = {labels.sum(dim=2)}")
+        # print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX line 269 labels = {labels.sum(dim=2).type()}")
+        # print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX line 269 labels = {(labels.sum(dim=2) > 0)}")
+        # print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX line 269 labels = {(labels.sum(dim=2) > 0).type()}")
+        # print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX line 269 labels = {(labels.sum(dim=2) > 0).sum(dim=1)}")
+        # print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX line 269 labels = {(labels.sum(dim=2) > 0).sum(dim=1).type()}")
+
+        # print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX line 276 (labels.sum(dim=2) > 0).to(dtype=labels.dtype) = {(labels.sum(dim=2) > 0).to(dtype=labels.dtype)}")
+        # print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX line 276 (labels.sum(dim=2) > 0).to(dtype=labels.dtype) = {(labels.sum(dim=2) > 0).to(dtype=labels.dtype).type()}")
+        # print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX line 269 labels = {labels.type()}")
+        # print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX line 269 labels = {labels.shape}")
+        # print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX line 270 nlabel = {nlabel}")
+        
+        nlabel = nlabel.sum(dim=1)
+
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX line 269 labels = {nlabel}")
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX line 269 labels = {nlabel.shape}")
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX line 269 labels = {nlabel.type()}")
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX line 269 labels = {nlabel.dtype}")
+
+        nlabel = nlabel.to(outputs.device)
+
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX line 299 labels = {nlabel}")
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX line 299 labels = {nlabel.shape}")
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX line 299 labels = {nlabel.type()}")
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX line 299 labels = {nlabel.dtype}")
+
 
         total_num_anchors = outputs.shape[1]
         x_shifts = torch.cat(x_shifts, 1)  # [1, n_anchors_all]
@@ -280,6 +318,12 @@ class YOLOXHead(nn.Module):
         num_gts = 0.0
 
         for batch_idx in range(outputs.shape[0]):
+            print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX line 291 n_label = {nlabel}")
+            print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX line 291 n_label[0] = {nlabel[0]}")
+            print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX line 291 n_label = {nlabel[batch_idx]}")
+            print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX line 291 int(num_gt) = {int(nlabel[batch_idx])}")
+            print(f"YYYYYYYYYYYYYYYYYYYYYYYYYYY line 292{outputs.shape[0]}")
+
             num_gt = int(nlabel[batch_idx])
             num_gts += num_gt
             if num_gt == 0:
@@ -290,7 +334,24 @@ class YOLOXHead(nn.Module):
                 fg_mask = outputs.new_zeros(total_num_anchors).bool()
             else:
                 gt_bboxes_per_image = labels[batch_idx, :num_gt, 1:5]
+
+                ############
+                print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX line 306 batch_idx = {batch_idx}")
+                print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX line 307 num_gt = {num_gt}")
+
+                print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX line 309 gt_bboxes_per_image = {gt_bboxes_per_image}")
+                print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX line 310 gt_bboxes_per_image SHAPE= {gt_bboxes_per_image.shape}")
+                print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX line 311 labels = {labels}")
+                print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX line 312 labels SHAPE= {labels.shape}")
+                #############
+
                 gt_classes = labels[batch_idx, :num_gt, 0]
+
+                ############
+                print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX line 318 gt_classes = {gt_classes}")
+                
+                #############
+
                 bboxes_preds_per_image = bbox_preds[batch_idx]
 
                 (
@@ -428,13 +489,15 @@ class YOLOXHead(nn.Module):
         #########################################
         ################ EDIT ###################
         #########################################
-        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXX GT_CLASSES = {gt_classes}")
-        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXX GT_CLASSES.norm() = {gt_classes.norm()}")
-        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXX GT_CLASSES = {gt_classes.shape}")
-        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXX NUM_CLASSES = {self.num_classes}")
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXX line 459 GT_CLASSES = {gt_classes}")
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXX line 460 GT_CLASSES.norm() = {gt_classes.norm()}")
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXX line 461 GT_CLASSES = {gt_classes.shape}")
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXX line 462 NUM_CLASSES = {self.num_classes}")
+
+        print(f"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA (gt_classes).to(torch.int64) = {(gt_classes).to(torch.int64)}")
 
         gt_cls_per_image = (
-            F.one_hot((gt_classes.norm()).to(torch.int64), self.num_classes)
+            F.one_hot((gt_classes).to(torch.int64), self.num_classes)
             .float()
         )
         pair_wise_ious_loss = -torch.log(pair_wise_ious + 1e-8)
