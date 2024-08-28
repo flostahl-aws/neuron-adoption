@@ -23,16 +23,13 @@ class IOUloss(nn.Module):
         area_p = torch.prod(pred[:, 2:], 1)
         area_g = torch.prod(target[:, 2:], 1)
 
-        ################################
-        ######## EDIT ##################
-        ################################
-        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX TL Type = {tl.type()}")
-        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX BR Type = {br.type()}")
-        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX output_size = {(tl < br).type()}")
-        ################################
-
         # Ensure the type conversion is handled correctly for XLA
         en = (tl < br).to(dtype=tl.dtype).prod(dim=1)
+
+        # EDIT
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX Losses.py Line 30 en = {en}")
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX Losses.py Line 30 en.dtype = {en.dtype}")
+
         area_i = torch.prod(br - tl, 1) * en
         area_u = area_p + area_g - area_i
         iou = (area_i) / (area_u + 1e-16)

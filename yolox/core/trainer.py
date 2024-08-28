@@ -87,7 +87,7 @@ class Trainer:
             self.before_epoch()
             self.train_in_iter()
             self.after_epoch()
-        xm.mark_step()
+        
 
     def train_in_iter(self):
         for self.iter in range(self.max_iter):
