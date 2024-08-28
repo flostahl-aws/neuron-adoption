@@ -452,6 +452,14 @@ class YOLOXHead(nn.Module):
         obj_preds,
         mode="gpu",
     ):
+        
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXX batch_idx = {batch_idx}")
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXX num_gt = {num_gt}")
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXX gt_bboxes_per_image = {gt_bboxes_per_image}")
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXX gt_classes = {gt_classes}")
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXX bboxes_preds_per_image = {bboxes_preds_per_image}")
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXX cls_preds = {cls_preds}")
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXX obj_preds = {obj_preds}")
 
         if mode == "cpu":
             print("-----------Using CPU for the Current Batch-------------")
@@ -480,10 +488,19 @@ class YOLOXHead(nn.Module):
 
         pair_wise_ious = bboxes_iou(gt_bboxes_per_image, bboxes_preds_per_image, False)
 
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXX GT_CLASSES = {gt_classes}")
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXX GT_CLASSES.norm() = {gt_classes.norm()}")
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXX Class values norm: {gt_classes.norm().item()}, max: {gt_classes.max().item()}")
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXX GT_CLASSES.max() = {gt_classes.max()}")
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXX GT_CLASSES_SHAPE = {gt_classes.shape}")
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXX NUM_CLASSES = {self.num_classes}")
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXX DTYPE = {gt_classes.dtype}")
+
         gt_cls_per_image = (
             F.one_hot(gt_classes.to(torch.int64), self.num_classes)
             .float()
         )
+        print(f"XXXXXXXXXXXXXXXXX gt_cls_per_image = {gt_cls_per_image} , SIZE = {gt_cls_per_image.size()}")
         pair_wise_ious_loss = -torch.log(pair_wise_ious + 1e-8)
 
         if mode == "cpu":

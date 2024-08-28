@@ -9,6 +9,12 @@ class IOUloss(nn.Module):
         self.loss_type = loss_type
 
     def forward(self, pred, target):
+
+        # EDIT
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX pred.shape = {pred.shape}")
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX pred  = {pred}")
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX target.shape = {target.shape}")
+        print(f"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX target  = {target}")
         assert pred.shape[0] == target.shape[0]
 
         pred = pred.view(-1, 4)

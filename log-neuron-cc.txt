@@ -1,0 +1,4 @@
+2024-08-28T17:37:30Z INFO 102110 [root]: /opt/aws_neuronx_venv_pytorch_2_1/bin/neuronx-cc compile --target=trn1 --framework=XLA python -m yolox.tools.train -n yolox-s -d 1 -b 2
+2024-08-28T17:37:30Z INFO 102125 [root]: XLA detected
+2024-08-28T17:37:30Z INFO 102125 [root]: Pipeline: Frontend HHChecker WalrusDriver BIRLinker Kelper
+2024-08-28T17:37:30Z INFO 102110 [root]: Subcommand returned with exitcode=2
