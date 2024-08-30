@@ -1,0 +1,28 @@
+{
+  "torch_neuronx_version": "2.1.2.2.1.0",
+  "neuronx_cc_version": "2.13.66.0+6dfecc895",
+  "support_percentage": "100.00%",
+  "supported_operators": {
+    "aten": {
+      "aten::add": 16,
+      "aten::silu": 74,
+      "aten::convolution_overrideable": 131,
+      "aten::permute": 19,
+      "aten::cat": 36,
+      "aten::sum": 10,
+      "aten::max_pool2d": 16,
+      "aten::mul": 7,
+      "aten::exp": 3,
+      "aten::native_batch_norm": 37,
+      "aten::view": 10,
+      "aten::gt": 6,
+      "aten::min": 3,
+      "aten::max": 4,
+      "aten::sub": 5,
+      "aten::sqrt": 1
+    }
+  },
+  "unsupported_operators": {
+    "aten": []
+  }
+}

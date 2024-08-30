@@ -94,7 +94,7 @@ class Trainer:
             self.before_iter()
             self.train_one_iter()
             self.after_iter()
-            xm.mark_step()  # Ensure TPU operations are synchronized
+            #xm.mark_step()  # Ensure TPU operations are synchronized
 
     def train_one_iter(self):
         iter_start_time = time.time()
@@ -117,6 +117,7 @@ class Trainer:
         self.scaler.scale(loss).backward()
         self.scaler.step(self.optimizer)
         self.scaler.update()
+        #xm.mark_step()
 
         if self.use_model_ema:
             self.ema_model.update(self.model)
@@ -158,8 +159,10 @@ class Trainer:
         )
         logger.info("init prefetcher, this might take one minute or less...")
         self.prefetcher = pl.MpDeviceLoader(self.train_loader, self.device)  # DataLoader for XLA
-
-        self.max_iter = len(self.train_loader)
+        #self.prefetcher = self.train_loader 
+        #self.max_iter = len(self.train_loader)
+        # EDIT
+        self.max_iter = 1
         self.lr_scheduler = self.exp.get_lr_scheduler(
             self.exp.basic_lr_per_img * self.args.batch_size, self.max_iter
         )

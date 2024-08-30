@@ -1,0 +1,12 @@
+Failed compilation with ['neuronx-cc', 'compile', '--target=trn1', '--framework=XLA', '/tmp/ubuntu/neuroncc_compile_workdir/673c013a-5a2f-4abd-b5cf-54ef2d8afd53/model.MODULE_9598781260349178993+67dc562b.hlo_module.pb', '--output', '/tmp/ubuntu/neuroncc_compile_workdir/673c013a-5a2f-4abd-b5cf-54ef2d8afd53/model.MODULE_9598781260349178993+67dc562b.neff', '--target=trn1', '--framework=torch', '--verbose=35']: usage: neuronx-cc compile --framework {XLA} --target {trn1,inf2,trn1n}
+                          [--enable-fast-loading-neuron-binaries]
+                          [--enable-fast-context-switch]
+                          [--auto-cast <cast mode>]
+                          [--auto-cast-type {fp16,bf16,tf32,fp8_e4m3}]
+                          [--output <filename>] [--optlevel {1,2,3}] [--help]
+                          [--model-type {transformer,unet-inference,generic}]
+                          [--distribution-strategy {fsdp,nemo,llm-training,generic}]
+                          [--verbose {debug|info|warning|user|off}]
+                          [--logfile <filename>]
+                          [--logfile-verbose {debug|info|warning|user}]
+neuronx-cc compile: error: argument --framework: invalid choice: torch (choose from XLA)

@@ -68,9 +68,9 @@ class Exp(BaseExp):
 
         # --------------  training config --------------------- #
         # epoch number used for warmup
-        self.warmup_epochs = 5
+        self.warmup_epochs = 5 #5
         # max training epoch
-        self.max_epoch = 300
+        self.max_epoch = 20 #300
         # minimum learning rate during warmup
         self.warmup_lr = 0
         self.min_lr_ratio = 0.05
@@ -198,6 +198,9 @@ class Exp(BaseExp):
             mixup_prob=self.mixup_prob,
         )
 
+
+        # EDIT
+        #self.datset = 
         if is_distributed:
             batch_size = batch_size // dist.get_world_size()
 

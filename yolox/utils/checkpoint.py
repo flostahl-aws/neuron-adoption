@@ -6,7 +6,9 @@ import shutil
 from loguru import logger
 
 import torch
-
+import torch_xla
+import torch_xla.core.xla_model as xm
+import torch_xla.debug.metrics as met
 
 def load_ckpt(model, ckpt):
     model_state_dict = model.state_dict()
@@ -37,7 +39,10 @@ def save_checkpoint(state, is_best, save_dir, model_name=""):
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
     filename = os.path.join(save_dir, model_name + "_ckpt.pth")
-    torch.save(state, filename)
+    # EDIT
+    xm.save(state["model"], filename)
+    #xm.save(state, filename)
+    #torch.save(state, filename)
     if is_best:
         best_filename = os.path.join(save_dir, "best_ckpt.pth")
         shutil.copyfile(filename, best_filename)
