@@ -161,14 +161,16 @@ class YOLOXHead(nn.Module):
             if self.training:
                 output = torch.cat([reg_output, obj_output, cls_output], 1)
                 output, grid = self.get_output_and_grid(
-                    output, k, stride_this_level, xin[0].dtype
+                    output, k, stride_this_level, xin[0].dtype #changed .type() to .dtype
                 )
                 x_shifts.append(grid[:, :, 0])
                 y_shifts.append(grid[:, :, 1])
                 expanded_strides.append(
                     torch.zeros(1, grid.shape[1])
                     .fill_(stride_this_level)
-                    .to(xin[0].device)
+                    # .to(xin[0].device)     
+                    # .type_as(xin[0])            # EDIT, not sure if we need to also change the device
+                    .to(dtype = xin[0].dtype)
                 )
                 if self.use_l1:
                     batch_size = reg_output.shape[0]
@@ -205,7 +207,7 @@ class YOLOXHead(nn.Module):
                 [x.flatten(start_dim=2) for x in outputs], dim=2
             ).permute(0, 2, 1)
             if self.decode_in_inference:
-                return self.decode_outputs(outputs, dtype=xin[0].dtype)
+                return self.decode_outputs(outputs, dtype=xin[0].dtype)   #EDIT HERE was .type()
             else:
                 return outputs
 
@@ -218,7 +220,9 @@ class YOLOXHead(nn.Module):
         hsize, wsize = output.shape[-2:]
         if grid.shape[2:4] != output.shape[2:4]:
             yv, xv = meshgrid([torch.arange(hsize), torch.arange(wsize)])
-            grid = torch.stack((xv, yv), 2).view((1, 1, hsize, wsize, 2)).to(dtype=dtype, device=output.device)
+            # grid = torch.stack((xv, yv), 2).view((1, 1, hsize, wsize, 2)).to(dtype=dtype, device=output.device)
+            grid = torch.stack((xv, yv), 2).view((1, 1, hsize, wsize, 2)).to(dtype=dtype)
+
             self.grids[k] = grid
 
         output = output.view(batch_size, 1, n_ch, hsize, wsize)
@@ -235,13 +239,15 @@ class YOLOXHead(nn.Module):
         strides = []
         for (hsize, wsize), stride in zip(self.hw, self.strides):
             yv, xv = meshgrid([torch.arange(hsize), torch.arange(wsize)])
-            grid = torch.stack((xv, yv), 2).view(1, -1, 2).to(dtype=dtype, device=outputs.device)
+            # grid = torch.stack((xv, yv), 2).view(1, -1, 2).to(dtype=dtype, device=outputs.device)
+            grid = torch.stack((xv, yv), 2).view(1, -1, 2).to(dtype=dtype)
             grids.append(grid)
             shape = grid.shape[:2]
-            strides.append(torch.full((*shape, 1), stride, device=outputs.device, dtype=dtype))
+            # strides.append(torch.full((*shape, 1), stride, device=outputs.device, dtype=dtype))
+            strides.append(torch.full((*shape, 1), stride, dtype=dtype))
 
-        grids = torch.cat(grids, dim=1)
-        strides = torch.cat(strides, dim=1)
+        grids = torch.cat(grids, dim=1).to(dtype=dtype) #added .to etc
+        strides = torch.cat(strides, dim=1).to(dtype=dtype) #added .to etc
 
         outputs = torch.cat([
             (outputs[..., 0:2] + grids) * strides,
@@ -289,16 +295,17 @@ class YOLOXHead(nn.Module):
         nlabel_cpu = (labels_cpu.sum(dim=2) > 0).sum(dim=1)  # number of objects
         print(f"XXXXXXXXXXXXXXXXXXXX PRINTING nlabel_cpu = {nlabel_cpu}")
 
-        nlabel = nlabel_cpu
-        labels = labels_cpu
-        print(f"XXXXXXXXXXXXXXXXXXXX PRINTING NEW nlabel = {nlabel}")
-        print(f"XXXXXXXXXXXXXXXXXXXX PRINTING nlabel[0] = {nlabel[0]}")
+        # nlabel = nlabel_cpu
+        # labels = labels_cpu
+        # print(f"XXXXXXXXXXXXXXXXXXXX PRINTING NEW nlabel = {nlabel}")
+        # print(f"XXXXXXXXXXXXXXXXXXXX PRINTING nlabel[0] = {nlabel[0]}")
 
 
         total_num_anchors = outputs.shape[1]
         x_shifts = torch.cat(x_shifts, 1)  # [1, n_anchors_all]
         y_shifts = torch.cat(y_shifts, 1)  # [1, n_anchors_all]
-        expanded_strides = torch.cat(expanded_strides, 1).to(device=outputs.device)
+        # expanded_strides = torch.cat(expanded_strides, 1).to(device=outputs.device)
+        expanded_strides = torch.cat(expanded_strides, 1)
         if self.use_l1:
             origin_preds = torch.cat(origin_preds, 1)
 
@@ -363,13 +370,14 @@ class YOLOXHead(nn.Module):
 
             cls_targets.append(cls_target)
             reg_targets.append(reg_target)
-            obj_targets.append(obj_target.to(dtype=dtype, device=outputs.device))
+            # obj_targets.append(obj_target.to(dtype=dtype, device=outputs.device))
+            obj_targets.append(obj_target.to(dtype=dtype))
             fg_masks.append(fg_mask)
             if self.use_l1:
                 l1_targets.append(l1_target)
 
 
-        print(f"****************PRINTING GT CLASSES AFTER DEFINITION = {gt_classes}")
+        # print(f"****************PRINTING GT CLASSES AFTER DEFINITION = {gt_classes}")
 
         cls_targets = torch.cat(cls_targets, 0)
         reg_targets = torch.cat(reg_targets, 0)
@@ -433,9 +441,9 @@ class YOLOXHead(nn.Module):
         obj_preds,
         mode="gpu",
     ):
-        device = xm.xla_device()
-        gt_classes = gt_classes.to(device)
-        gt_bboxes_per_image = gt_bboxes_per_image.to(device)
+        # device = xm.xla_device()
+        # gt_classes = gt_classes.to(device)
+        # gt_bboxes_per_image = gt_bboxes_per_image.to(device)
 
         # nlabel = nlabel.to(device)
         # labels = labels.to(device)
@@ -494,7 +502,7 @@ class YOLOXHead(nn.Module):
         #########################################
         print(f"XXXXXXXXXXXXXXXXXXXXXXXXXX DTYPE = {gt_classes.dtype}")
         # gt_classes = gt_classes.to(torch.int64)
-        gt_classes = gt_classes.to('cpu')
+        # gt_classes = gt_classes.to('cpu')
         print(f"XXXXXXXXXXXXXXXXXXXXXXXXXX GT_CLASSES = {gt_classes}")
         print(f"XXXXXXXXXXXXXXXXXXXXXXXXXX GT_CLASSES.norm() = {gt_classes.norm()}")
         print(f"XXXXXXXXXXXXXXXXXXXXXXXXXX Class values norm: {gt_classes.norm().item()}, max: {gt_classes.max().item()}")
