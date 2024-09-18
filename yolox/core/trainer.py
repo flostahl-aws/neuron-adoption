@@ -50,7 +50,8 @@ class Trainer:
         # training related attributes
         self.max_epoch = exp.max_epoch
         self.amp_training = args.fp16
-        self.scaler = GradScaler()
+        # self.scaler = GradScaler()
+        self.scaler = torch.cuda.amp.GradScaler(enabled=args.fp16)
         self.is_distributed = get_world_size() > 1
         self.rank = get_rank()
         self.local_rank = get_local_rank()
@@ -114,8 +115,8 @@ class Trainer:
         iter_start_time = time.time()
         batch = next(iter(self.prefetcher))
         inps, targets, _, _ = batch
-        print(f"TTTTTTTTTTTT inps = {inps} , inps.size() = {inps.size()}")
-        print(f"TTTTTTTTTTTT targets = {targets} , targets.size() = {targets.size()}\n")
+        # print(f"TTTTTTTTTTTT inps = {inps} , inps.size() = {inps.size()}")
+        # print(f"TTTTTTTTTTTT targets = {targets} , targets.size() = {targets.size()}\n")
         inps = inps.to(self.data_type)
         targets = targets.to(self.data_type)
         inps = inps.to(self.device)
@@ -124,37 +125,58 @@ class Trainer:
         inps, targets = self.exp.preprocess(inps, targets, self.input_size)
         data_end_time = time.time()
 
+        self.optimizer.zero_grad()
+        outputs = self.model(inps, targets)
+        loss = outputs["total_loss"]
+        print("BOUTT DO SCALER.SCALE\n")
+        self.scaler.scale(loss).backward()
+        print("FINISHED DA SCALER")
+
+        # print(f"************************ PRINTING OUTPUTS from trainer {outputs}\n")
+        
+
+
+
         # with torch.cuda.amp.autocast(enabled=self.amp_training):
         #     outputs = self.model(inps, targets)
 
         # with autocast(xm.xla_device()):
         #     outputs = self.model(inps, targets)
 
-        outputs = self.model(inps, targets)
-        print(f"************************ PRINTING OUTPUTS {outputs}\n")
+        # outputs = self.model(inps, targets)
+        # print(f"************************ PRINTING OUTPUTS {outputs}\n")
 
 
-        loss = outputs["total_loss"]
-        print(f"************************ PRINTING LOSS {loss}\n")
+        # loss = outputs["total_loss"]
+        # print(f"************************ PRINTING LOSS {loss}\n")
         
 
-        print("************************ BOUTTA DO xm.mark_step() after loss = outputs...\n")
-        xm.mark_step()
-        print("************************ JUST DID xm.mark_step()\n")
+        # print("************************ BOUTTA DO xm.mark_step() after loss = outputs...\n")
+        # xm.mark_step()
+        # print("************************ JUST DID xm.mark_step()\n")
 
-        self.optimizer.zero_grad()
-        print("************************ BOUTTA DO xm.mark_step() after self.optimizer.zero_grad()\n")
-        xm.mark_step()
-        print("************************ JUST DID xm.mark_step()\n")
+        # self.optimizer.zero_grad()
+        # print("************************ BOUTTA DO xm.mark_step() after self.optimizer.zero_grad()\n")
+        # xm.mark_step()
+        # print("************************ JUST DID xm.mark_step()\n")
 
-        self.scaler.scale(loss).backward()
-        print("************************ BOUTTA DO xm.mark_step() after self.scaler.scale(loss).backward()\n")
-        xm.mark_step()
-        print("************************ JUST DID xm.mark_step()\n")
+        # self.scaler.scale(loss).backward()
+        # print("************************ BOUTTA DO xm.mark_step() after self.scaler.scale(loss).backward()\n")
+        # xm.mark_step()
+        # print("************************ JUST DID xm.mark_step()\n")
 
 
+
+
+
+
+        print("BOUTT DO SCALER.STEP\n")
         self.scaler.step(self.optimizer)
         self.scaler.update()
+        print("BOUTTA DO MARK STEP AFTER SCALER.UPDATE")
+        # xm.mark_step()
+
+        print("FINISHED THEEEEEE MARKSTEP FROM TRAINER.PY")
 
         if self.use_model_ema:
             self.ema_model.update(self.model)
@@ -448,78 +470,80 @@ class Trainer:
 
 
 
-class GradScaler(torch.cuda.amp.GradScaler):
-  """
-  An torch_xla variant of torch.cuda.amp.GradScaler that helps perform the steps of gradient scaling
-  conveniently.
-  Args:
-      init_scale (float, optional, default=2.**16):  Initial scale factor.
-      growth_factor (float, optional, default=2.0):  Factor by which the scale is multiplied during
-          :meth:`update` if no inf/NaN gradients occur for ``growth_interval`` consecutive iterations.
-      backoff_factor (float, optional, default=0.5):  Factor by which the scale is multiplied during
-          :meth:`update` if inf/NaN gradients occur in an iteration.
-      growth_interval (int, optional, default=2000):  Number of consecutive iterations without inf/NaN gradients
-          that must occur for the scale to be multiplied by ``growth_factor``.
-      enabled (bool, optional, default=True):  If ``False``, disables gradient scaling. :meth:`step` simply
-          invokes the underlying ``optimizer.step()``, and other methods become no-ops.
-      use_zero_grad (bool, optional, default=False): If ``True``, enables the torch_xla specific zero gradients
-          optimization that performs ``optimizer.step()`` with gradients set to zero instead of skipping it when
-          inf/NaN gradients occur. This may improve the performance by removing the barrier in GradScaler.
-  """
+# class GradScaler(torch.cuda.amp.GradScaler):
+#   """
+#   An torch_xla variant of torch.cuda.amp.GradScaler that helps perform the steps of gradient scaling
+#   conveniently.
+#   Args:
+#       init_scale (float, optional, default=2.**16):  Initial scale factor.
+#       growth_factor (float, optional, default=2.0):  Factor by which the scale is multiplied during
+#           :meth:`update` if no inf/NaN gradients occur for ``growth_interval`` consecutive iterations.
+#       backoff_factor (float, optional, default=0.5):  Factor by which the scale is multiplied during
+#           :meth:`update` if inf/NaN gradients occur in an iteration.
+#       growth_interval (int, optional, default=2000):  Number of consecutive iterations without inf/NaN gradients
+#           that must occur for the scale to be multiplied by ``growth_factor``.
+#       enabled (bool, optional, default=True):  If ``False``, disables gradient scaling. :meth:`step` simply
+#           invokes the underlying ``optimizer.step()``, and other methods become no-ops.
+#       use_zero_grad (bool, optional, default=False): If ``True``, enables the torch_xla specific zero gradients
+#           optimization that performs ``optimizer.step()`` with gradients set to zero instead of skipping it when
+#           inf/NaN gradients occur. This may improve the performance by removing the barrier in GradScaler.
+#   """
 
-  def __init__(
-      self,
-      init_scale=2.0**16,
-      growth_factor=2.0,
-      backoff_factor=0.5,
-      growth_interval=2000,
-      enabled=True,
-      use_zero_grad=False,
-  ):
-    super().__init__(
-        init_scale=init_scale,
-        growth_factor=growth_factor,
-        backoff_factor=backoff_factor,
-        growth_interval=growth_interval,
-        enabled=enabled,
-    )
+#   def __init__(
+#       self,
+#       init_scale=2.0**16,
+#       growth_factor=2.0,
+#       backoff_factor=0.5,
+#       growth_interval=2000,
+#       enabled=True,
+#       use_zero_grad=False,
+#   ):
+#     super().__init__(
+#         init_scale=init_scale,
+#         growth_factor=growth_factor,
+#         backoff_factor=backoff_factor,
+#         growth_interval=growth_interval,
+#         enabled=enabled,
+#     )
 
-    def get_scaling_factor(a):
+#     def get_scaling_factor(a):
 
-      def if_true(a):
-        return xb.Op.zero(a.builder())
+#       def if_true(a):
+#         return xb.Op.zero(a.builder())
 
-      def if_false(a):
-        return xb.Op.one(a.builder())
+#       def if_false(a):
+#         return xb.Op.one(a.builder())
 
-      cond = a != xb.Op.zero(a.builder())
-      return cond.mkconditional((a,), if_true, if_false)
+#       cond = a != xb.Op.zero(a.builder())
+#       return cond.mkconditional((a,), if_true, if_false)
 
-    self.get_scaling_factor = xor.register("get_scaling_factor",
-                                           get_scaling_factor)
-    self.use_zero_grad = use_zero_grad
+#     self.get_scaling_factor = xor.register("get_scaling_factor",
+#                                            get_scaling_factor)
+#     self.use_zero_grad = use_zero_grad
 
-  def _maybe_opt_step(self, optimizer, optimizer_state, *args, **kwargs):
-    retval = None
-    is_syncfree_optim = "found_inf" in inspect.signature(
-        optimizer.step).parameters
-    if is_syncfree_optim:
-      found_inf = torch.stack(
-          tuple(optimizer_state["found_inf_per_device"].values())).sum()
-      kwargs['found_inf'] = found_inf
-      retval = optimizer.step(*args, **kwargs)
-    elif self.use_zero_grad:
-      found_inf = torch.stack(
-          tuple(optimizer_state["found_inf_per_device"].values())).sum()
-      scaling_factor = self.get_scaling_factor(found_inf)
-      for grad in xm._fetch_gradients(optimizer):
-        grad.nan_to_num_()
-        grad.mul_(scaling_factor)
-      retval = optimizer.step(*args, **kwargs)
-    else:
-      print("+++++++++++++++++++++ DOING MARK_STEP IN GRADSCALER YOOO")
-      xm.mark_step()
-      if not sum(
-          v.item() for v in optimizer_state["found_inf_per_device"].values()):
-        retval = optimizer.step(*args, **kwargs)
-    return retval
+#   def _maybe_opt_step(self, optimizer, optimizer_state, *args, **kwargs):
+#     retval = None
+#     is_syncfree_optim = "found_inf" in inspect.signature(
+#         optimizer.step).parameters
+#     if is_syncfree_optim:
+#       found_inf = torch.stack(
+#           tuple(optimizer_state["found_inf_per_device"].values())).sum()
+#       kwargs['found_inf'] = found_inf
+#       retval = optimizer.step(*args, **kwargs)
+#     elif self.use_zero_grad:
+#       found_inf = torch.stack(
+#           tuple(optimizer_state["found_inf_per_device"].values())).sum()
+#       scaling_factor = self.get_scaling_factor(found_inf)
+#       for grad in xm._fetch_gradients(optimizer):
+#         grad.nan_to_num_()
+#         grad.mul_(scaling_factor)
+#       retval = optimizer.step(*args, **kwargs)
+#     else:
+#       print("+++++++++++++++++++++ DOING MARK_STEP IN GRADSCALER YOOO - didnt actually")
+#     #   xm.mark_step()
+#       print("+++++++++++++++++++++ FINISHED MARK_STEP IN GRADSCALER YOOO")
+
+#       if not sum(
+#           v.item() for v in optimizer_state["found_inf_per_device"].values()):
+#         retval = optimizer.step(*args, **kwargs)
+#     return retval
